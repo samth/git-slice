@@ -1,6 +1,9 @@
 #lang racket
 
-(define git-exe "/usr/bin/git")
+(define git-exe (find-executable-path "git"))
+
+(unless git-exe
+  (error 'git-slice "could not find `git` in path"))
 
 (define-values (subdir dest-dir)
   (command-line
@@ -8,6 +11,15 @@
    (subdir dest-dir)
    (values subdir dest-dir)))
 
+(unless (directory-exists? dest-dir)
+  (error 'git-slice 
+         "destination directory ~a does not exist or isn't a directory"
+         dest-dir))
+
+(unless (directory-exists? subdir)
+  (error 'git-slice
+         "subdirectory ~a does not exist or isn't a directory"
+         subdir))
 
 (define (filter-input filter . cmd)
   (define-values (p out in err)
