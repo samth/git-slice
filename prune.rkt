@@ -1,6 +1,11 @@
 #lang racket/kernel
+(#%require (for-syntax '#%utils racket/kernel))
 
-(define-values git-exe (find-executable-path "git"))
+(define-syntaxes (git-exe-stx)
+  (lambda (stx)
+    (datum->syntax stx (cons 'quote (cons (find-executable-path "git") null)))))
+
+(define-values (git-exe) (git-exe-stx))
 
 (if (not git-exe)
     (error 'git-prune "could not find `git` in path")
@@ -13,7 +18,7 @@
 (if (not (directory-exists? dir))
     (error 'git-prune 
            "destination directory ~a does not exist or isn't a directory"
-           dest-dir)
+           dir)
     (void))
 
 
@@ -28,7 +33,6 @@
   (environment-variables-ref (current-environment-variables)
                              #"GIT_COMMIT"))
 
-#;
 (call-with-output-file
     (build-path dir "log")
   (lambda (o) (fprintf o "~s\npre: ~s\n" commit keeps))
@@ -100,7 +104,6 @@
     void
     (call-with-output-file state-file (lambda (o) (write keeps o)) 'truncate))
 
-#;
 (call-with-output-file
     (build-path dir "log")
   (lambda (o) (fprintf o "~a\npost: ~s\n" commit keeps))
