@@ -74,7 +74,7 @@
 (define files
   (for/list ([f (in-directory subdir)]
              #:when (file-exists? f))
-    (path->string f)))
+    (path->bytes f)))
 
 (define lifetimes (make-hash))
 

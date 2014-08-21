@@ -43,7 +43,7 @@
                                        "ls-files"))
   (define-values (loop)
     (lambda (l)
-      (define-values (r) (read-line i))
+      (define-values (r) (read-bytes-line i))
       (if (eof-object? r)
           l
           (if (hash-ref keeps r #f)
