@@ -3,11 +3,13 @@
 ### Sample use:
 
 ```
-$ mkdir tmp-data
+$ mkdir /path/to/tmp-data
 $ cd my-repo
-$ racket -l git-slice subdir tmp-data
-# Providing an absolute path below is important.
-$ git --filter-branch --prune-empty --index-filter 'racket -l git-slice/prune /path/to/tmp-data'
+$ racket -l git-slice subdir /path/to/tmp-data
+# Providing an absolute /path/to/tmp-data below is important.
+$ git --filter-branch \
+      --index-filter 'racket -l git-slice/prune /path/to/tmp-data' \
+      --commit-filter 'if ! racket -l git-slice/commit /path/to/tmp-data "$@" ; then skip_commit "$@" ; fi'
 ```
 
 The `filter-branch` command will take a long time. It can be sped up

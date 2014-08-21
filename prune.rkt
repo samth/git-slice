@@ -10,8 +10,19 @@
 
   (define-values (git-exe) (git-exe-stx))
 
-
   (define-values (dir) (vector-ref (current-command-line-arguments) 0))
+
+  (define-values (commit)
+    (environment-variables-ref (current-environment-variables)
+                               #"GIT_COMMIT"))
+
+  (define-values (relevants-file) (build-path dir "relevants.rktd"))
+  (define-values (relevants) (call-with-input-file relevants-file read))
+
+  ;; Shortcut for irrelevant commits:
+  (if (not (hash-ref relevants commit #f))
+      (exit 0)
+      (void))
 
   (define-values (state-file) (build-path dir "state.rktd"))
   (define-values (keeps) (call-with-input-file state-file read))
@@ -19,9 +30,6 @@
   (define-values (actions-file) (build-path dir "actions.rktd"))
   (define-values (actionss) (call-with-input-file actions-file read))
 
-  (define-values (commit)
-    (environment-variables-ref (current-environment-variables)
-                               #"GIT_COMMIT"))
   #;
   (call-with-output-file
       (build-path dir "log")
@@ -64,7 +72,7 @@
 
   (define-values (do-in-chunks)
     (lambda (l)
-      (define-values (chunk rest) (split null l 10024))
+      (define-values (chunk rest) (split null l 1024))
       (define-values (p2 i2 o2 e2) (apply
                                     subprocess
                                     (current-output-port)

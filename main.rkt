@@ -77,6 +77,7 @@
     (path->bytes f)))
 
 (define lifetimes (make-hash))
+(define relevants (make-hash))
 
 ;; Since a file can be copied, it might have multiple "ending"
 ;; points in the lifetimes of different files, so make sure we
@@ -119,18 +120,23 @@
             =>
             (lambda (m)
               (do-commit!)
-              (set! in-commit (cadr m)))]
-           [(regexp-match #rx"^(?:copy|rename) to (.*)$" l)
+              (set! in-commit (cadr m))
+              (hash-set! relevants in-commit #t))]
+           [(regexp-match #rx#"^(?:copy|rename) to (.*)$" l)
             =>
             (lambda (m)
               (define old-name (cadr m))
               (unless (equal? old-name prev-name)
                 (error 'slice (~a "confused by rename\n"
                                   "  current: ~a\n"
-                                  "  from: ~a")
+                                  "  from: ~a\n"
+                                  "  previous: ~a\n"
+                                  "  starting name: ~a")
                        current-name
-                       old-name)))]
-           [(regexp-match #rx"^(?:copy|rename) from (.*)$" l)
+                       old-name
+                       prev-name
+                       f)))]
+           [(regexp-match #rx#"^(?:copy|rename) from (.*)$" l)
             =>
             (lambda (m)
               (set! prev-name current-name)
@@ -181,5 +187,9 @@
   (lambda ()
     (write (for/hash ([(k v) (in-hash commit->actions)])
              (values (string->bytes/utf-8 k) v)))))
-
                      
+(with-output-to-file (build-path dest-dir "relevants.rktd")
+  #:exists 'truncate
+  (lambda ()
+    (write (for/hash ([(k v) (in-hash relevants)])
+             (values (string->bytes/utf-8 k) v)))))
