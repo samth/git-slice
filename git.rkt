@@ -1,7 +1,9 @@
 #lang racket
 
 (provide git-exe
-         filter-input)
+         filter-input
+         -system*
+         -system*/print)
 
 (define git-exe (find-executable-path "git"))
 
@@ -22,3 +24,6 @@
      v)
    (close-input-port out)
    (subprocess-wait p)))
+
+(define (-system* cmd . args) (apply system* cmd (filter values args)))
+(define (-system*/print . args) (displayln (apply ~a (add-between (filter values args) " "))))
