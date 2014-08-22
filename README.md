@@ -1,5 +1,17 @@
 # For slicing git repositories
 
+### Warning!
+
+This performs permanent modification to your git repository! Be careful.
+
+
+### Installation
+
+```
+raco pkg install git-slice
+```
+
+
 ### Sample use:
 
 ```
