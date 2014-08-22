@@ -1,9 +1,5 @@
 #lang racket
-
-(define git-exe (find-executable-path "git"))
-
-(unless git-exe
-  (error 'git-slice "could not find `git` in path"))
+(require "git.rkt")
 
 (define-values (subdir dest-dir)
   (command-line
@@ -20,21 +16,6 @@
   (error 'git-slice
          "subdirectory ~a does not exist or isn't a directory"
          subdir))
-
-(define (filter-input filter . cmd)
-  (define-values (p out in err)
-    (apply subprocess
-           #f
-           (current-input-port)
-           (current-output-port)
-           cmd))
-  (begin0
-   (for*/list ([l (in-lines out)]
-               [v (in-value (filter l))]
-               #:when v)
-     v)
-   (close-input-port out)
-   (subprocess-wait p)))
 
 (define commits
   (filter-input
@@ -188,8 +169,27 @@
     (write (for/hash ([(k v) (in-hash commit->actions)])
              (values (string->bytes/utf-8 k) v)))))
                      
+(define oldest-relevant
+  (let ([advanced-relevants
+         (for/hash ([c (in-hash-keys relevants)])
+           (values (advance-to-main c) #t))])
+    (let loop ([cs main-line-commits] [c head-commit])
+      (cond
+       [(null? cs) c]
+       [(hash-ref advanced-relevants (car cs) #f)
+        (loop (cdr cs) (car cs))]
+       [else (loop (cdr cs) c)]))))
+(printf "relevant commits bounded by ~a\n" oldest-relevant)
+(hash-set! relevants oldest-relevant #t)
+
 (with-output-to-file (build-path dest-dir "relevants.rktd")
   #:exists 'truncate
   (lambda ()
     (write (for/hash ([(k v) (in-hash relevants)])
              (values (string->bytes/utf-8 k) v)))))
+
+(with-output-to-file (build-path dest-dir "oldest.rktd")
+  #:exists 'truncate
+  (lambda ()
+    (write (list oldest-relevant
+                 (car (hash-ref commit->parents oldest-relevant))))))

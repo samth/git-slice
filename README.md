@@ -5,14 +5,13 @@
 ```
 $ mkdir /path/to/tmp-data
 $ cd my-repo
-$ racket -l git-slice subdir /path/to/tmp-data
 # Providing an absolute /path/to/tmp-data below is important.
-$ git --filter-branch \
-      --index-filter 'racket -l git-slice/prune /path/to/tmp-data' \
-      --commit-filter 'if ! racket -l git-slice/commit /path/to/tmp-data "$@" ; then skip_commit "$@" ; fi'
+$ racket -l git-slice subdir /path/to/tmp-data
+$ racket -l git-slice/filter /path/to/tmp-data
+$ racket -l git-slice/chop /path/to/tmp-data
 ```
 
-The `filter-branch` command will take a long time. It can be sped up
+The `git-slice/filter` step will take a long time. It can be sped up
 by using a ramdisk, see [here][1] for Linux instructions to set one up,
 and then add `-d /tmp/ramdisk/scratch` as an additional argument.
 
