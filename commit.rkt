@@ -1,4 +1,4 @@
-(module prune '#%kernel
+(module commit '#%kernel
   (#%require (for-syntax '#%kernel '#%utils))
 
   (define-values (dir) (vector-ref (current-command-line-arguments) 0))
@@ -19,7 +19,7 @@
     (lambda (stx)
       (let-values ([(pth) (find-executable-path "git")])
         (if (not pth)
-            (error 'git-prune "could not find `git` in path")
+            (datum->syntax stx '(error 'git-commit "could not find `git` in path"))
             (datum->syntax stx (cons 'quote (cons pth null)))))))
 
   (define-values (git-exe) (git-exe-stx))

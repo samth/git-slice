@@ -5,7 +5,7 @@
     (lambda (stx)
       (let-values ([(pth) (find-executable-path "git")])
         (if (not pth)
-            (error 'git-prune "could not find `git` in path")
+            (datum->syntax stx '(error 'git-commit "could not find `git` in path"))
             (datum->syntax stx (cons 'quote (cons pth null)))))))
 
   (define-values (git-exe) (git-exe-stx))
