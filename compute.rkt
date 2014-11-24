@@ -134,7 +134,7 @@
   
   ;; Collect lifetimes of all interesting files, starting
   ;; with the ones we want in the end:
-  (for ([f (in-list files)])
+  (for ([f (in-list (sort files bytes<?))])
     (find-lifetime! f head-commit))
   
   (define commit->actions (make-hash))
