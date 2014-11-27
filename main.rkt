@@ -47,3 +47,5 @@
 (define end-time (chop:go dest-dir tmp-dir dry-run?))
 
 (printf "\n### git-slice: finished in ~a total seconds\n" (/ (- end-time init-time) 1000.))
+
+(module test racket)

@@ -54,4 +54,8 @@
   (write-bytes #"\n" o)
   (close-output-port o)
 
-  (subprocess-wait p))
+  (subprocess-wait p)
+
+  ;; to avoid raco test failures
+  (module test racket)
+  )

@@ -108,4 +108,7 @@
     (lambda (o) (fprintf o "~a\npost: ~s\n" commit keeps))
     'append)
 
+  ;; to avoid raco test failures
+  (module test racket)
+
   )
