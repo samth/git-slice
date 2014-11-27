@@ -31,6 +31,7 @@
                               [(c) (in-list v)])
       (hash-update ht c (lambda (p) (cons k p)) null)))
   
+  ;; One particular path that we sync forks to:
   (define main-line-commits
     (let loop ([a head-commit])
       (cons a
@@ -43,11 +44,37 @@
     (for/hash ([f (in-list main-line-commits)])
       (values f #t)))
   
-  (define (advance-to-main commit)
+  ;; To find a commit that is on all paths from head to the initial
+  ;; commit:
+  (define (find-newest-older-cut p)
+    (define (can-reach-root-without? without)
+      (define seen (make-hash))
+      (let loop ([p head-commit])
+        (cond
+         [(hash-ref seen p #f)
+          #f]
+         [else
+          (hash-set! seen p #t)
+          (define ps (hash-ref commit->parents p))
+          (or (null? ps)
+              (for/or ([p (in-list ps)])
+                (and (not (equal? p without))
+                     (loop p))))])))
+    (let loop ([p p])
+      (if (can-reach-root-without? p)
+          (loop (car (hash-ref commit->parents p)))
+          p)))
+
+  (define (advance-to-main/newer commit)
     (if (hash-ref commit->main? commit #f)
         commit
-        (advance-to-main (car (hash-ref commit->children commit)))))
-  
+        (advance-to-main/newer (car (hash-ref commit->children commit)))))
+
+  (define (advance-to-main/older commit)
+    (if (hash-ref commit->main? commit #f)
+        commit
+        (advance-to-main/older (car (hash-ref commit->parents commit)))))
+
   (define files
     (for/list ([f (in-directory subdir)]
                #:when (file-exists? f))
@@ -86,7 +113,7 @@
           (when (and in-commit prev-name)
             (printf "~a : ~a...~a^\n" prev-name start-commit in-commit)
             (hash-set! lifetimes prev-name (cons start-commit in-commit))
-            (find-lifetime! current-name (advance-to-main in-commit))
+            (find-lifetime! current-name (advance-to-main/newer in-commit))
             (set! done? #t)))
         (void
          (filter-input
@@ -165,16 +192,20 @@
       (write (for/hash ([(k v) (in-hash commit->actions)])
                (values (string->bytes/utf-8 k) v)))))
   
-  (define oldest-relevant
+  (define oldest-relevant-commit
     (let ([advanced-relevants
            (for/hash ([c (in-hash-keys relevants)])
-             (values (advance-to-main c) #t))])
+             (values (advance-to-main/older c) #t))])
       (let loop ([cs main-line-commits] [c head-commit])
         (cond
           [(null? cs) c]
           [(hash-ref advanced-relevants (car cs) #f)
            (loop (cdr cs) (car cs))]
           [else (loop (cdr cs) c)]))))
+  (printf "Looking for cut older than ~a...\n" oldest-relevant-commit)
+  (define oldest-relevant
+    (find-newest-older-cut oldest-relevant-commit))
+
   (printf "relevant commits bounded by ~a\n" oldest-relevant)
   (hash-set! relevants oldest-relevant #t)
   
