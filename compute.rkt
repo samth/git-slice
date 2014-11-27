@@ -76,11 +76,11 @@
     (and lt
          (let ([old-start-commit (car lt)])
            (define m (member old-start-commit main-line-commits))
-           (unless m (error 'slide "start commit not found in main line: ~a" old-start-commit))
+           (unless m (error 'git-slice "start commit not found in main line: ~a" old-start-commit))
            (or (member start-commit m)
                (begin
                  (unless (member start-commit main-line-commits)
-                   (error 'slide "new start commit not found in main line: ~a" start-commit))
+                   (error 'git-slice "new start commit not found in main line: ~a" start-commit))
                  #f)))))
   
   ;; Determine the commit range that applies to a file.
@@ -116,11 +116,11 @@
                (lambda (m)
                  (define old-name (cadr m))
                  (unless (equal? old-name prev-name)
-                   (error 'slice (~a "confused by rename\n"
-                                     "  current: ~a\n"
-                                     "  from: ~a\n"
-                                     "  previous: ~a\n"
-                                     "  starting name: ~a")
+                   (error 'git-slice (~a "confused by rename\n"
+                                         "  current: ~a\n"
+                                         "  from: ~a\n"
+                                         "  previous: ~a\n"
+                                         "  starting name: ~a")
                           current-name
                           old-name
                           prev-name
@@ -194,6 +194,28 @@
   (printf "relevant commits bounded by ~a\n" oldest-relevant)
   (define drop-oldest? (not (hash-ref relevants oldest-relevant #f)))
   (hash-set! relevants oldest-relevant #t)
+  
+  (printf "Finding descendents of relevant commits\n")
+  (define commit->descendents (closure (hash-keys relevants) commit->children))
+  (define common-descendents
+    (apply set-intersect
+           (list->set (hash-keys relevants))
+           (for/list ([r (in-hash-keys relevants)])
+             (hash-ref commit->descendents r))))
+
+  (when (zero? (set-count common-descendents))
+    (printf "Adding new commit to serve as common descendant for new HEAD\n")
+    (-system* git-exe "commit" "--allow-empty" "-m" "merge slice")
+    (define new-root
+      (car
+       (filter-input (lambda (l)
+                       (cond
+                        [(regexp-match #rx"^commit (.*)$" l)
+                         => (lambda (m) (cadr m))]
+                        [else #f]))
+                     git-exe
+                     "log")))
+    (hash-set! relevants new-root #t))
   
   (with-output-to-file (build-path dest-dir "relevants.rktd")
     #:exists exists-flag

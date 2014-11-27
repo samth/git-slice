@@ -1,6 +1,7 @@
 #lang racket
 (require racket/runtime-path
-         rackunit)
+         rackunit
+         "../git.rkt")
 
 (define-runtime-module-path-index main "../main.rkt")
 
@@ -89,33 +90,61 @@
   ;; etc., and each of those directories corresponds to a slice to
   ;; try. Each `commit` names the end slices that should include
   ;; the commit.
+  ;;
+  ;; Gamma is created in one branch, and Delta in another
+  ;; Epsilon is created in two branches, which would give it
+  ;;  multiple initial commits without special handling
+  ;; Zeta has modifications in two branches, and none
+  ;;  after the branch
   
   (create "a/x_Alpha")
   (commit "Alpha")
+  
   (modify "a/x_Alpha")
   (create "a/y_Alpha")
   (commit "Alpha")
+  
   (create "b/x_Beta")
   (create "b/y_Beta")
   (commit "Beta")
+  
   (move "a/x_Alpha" "a/z_Alpha")
   (move "a/y_Alpha" "c/y_Alpha")
   (commit "Alpha")
+  
   (copy "b/x_Beta" "b/z_Beta")
   (commit "Beta")
+  
+  (create "z/x_Zeta")
+  (create "z/y_Zeta")
+  (commit "Zeta")
   
   (fork
    (lambda ()
      (create "c/x_Gamma")
      (commit "Gamma")
+     
      (modify "a/z_Alpha")
-     (commit "Alpha"))
+     (commit "Alpha")
+     
+     (create "e/x_Epsilon")
+     (commit "Epsilon")
+     
+     (move "z/x_Zeta" "zeta/x_Zeta")
+     (commit "Zeta"))
    (lambda ()
      (create "d/x_Delta")
      (commit "Delta")
+     
      (modify "b/z_Beta")
      (move "b/y_Beta" "c/y_Beta")
-     (commit "Beta")))
+     (commit "Beta")
+     
+     (create "e/y_Epsilon")
+     (commit "Epsilon")
+     
+     (move "z/y_Zeta" "zeta/y_Zeta")
+     (commit "Zeta")))
   
   ;; Move all into place:
   (move "a/z_Alpha" "alpha/x_Alpha")
@@ -125,12 +154,15 @@
   (move "b/z_Beta" "beta/z_Beta")
   (move "c/x_Gamma" "gamma/x_Gamma")
   (move "d/x_Delta" "delta/x_Delta")
-  (commit "Alpha" "Beta" "Gamma" "Delta"))
+  (move "e/x_Epsilon" "epsilon/x_Epsilon")
+  (move "e/y_Epsilon" "epsilon/y_Epsilon")
+  (commit "Alpha" "Beta" "Gamma" "Delta" "Epsilon"))
 
 ;; ----------------------------------------
 ;; Extract and check slices
 
-(define (slice slice)
+(define (slice slice [extra-commit? #f])
+  (printf "~a\nSLICING ~a...\n" (make-string 60 #\=) slice)
   (define slice-dir (build-path work-dir "slice"))
   (reset-dir slice-dir)
   (parameterize ([current-directory work-dir])
@@ -160,15 +192,22 @@
          [(regexp-match? #rx"^CHANGED: " l)
           (check-true (member slice (string-split l)))]
          [else count])))
-    (check-equal? commit-count (hash-ref commit-counts slice))
-    (unless (equal? commit-count (hash-ref commit-counts slice))
+    (define expected-count  (+ (hash-ref commit-counts slice)
+                               (if extra-commit? 1 0)))
+    (check-equal? commit-count expected-count)
+    (unless (equal? commit-count expected-count)
       (exit))
-    ))
+    
+    ;; Checks that we didn't create a repo with multiple
+    ;; initial commits (which is a danger with Epsilon):
+    (call-with-values extract-commits void)))
 
 (slice "Alpha")
 (slice "Beta")
 (slice "Gamma")
 (slice "Delta")
+(slice "Epsilon" #t) ; extra commit is a new initial commit
+(slice "Zeta" #t) ; extra commit is a new head to join branches
 
 ;; ----------------------------------------
 

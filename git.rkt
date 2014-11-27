@@ -4,7 +4,8 @@
          filter-input
          -system*
          -system*/print
-         extract-commits)
+         extract-commits
+         closure)
 
 (define git-exe (find-executable-path "git"))
 
@@ -49,4 +50,25 @@
                               [(c) (in-list v)])
       (hash-update ht c (lambda (p) (cons k p)) null)))
   
+  (let ([num-without-parents (for/sum ([v (in-hash-values commit->parents)])
+                               (if (null? v)
+                                   1
+                                   0))])
+    (unless (= 1 num-without-parents)
+      (error 'git-slice
+             "expect 1 initial commit, found ~a commits without parents"
+             num-without-parents)))
+  
   (values commits head-commit commit->parents commit->children))
+
+
+(define (closure start-commits commit->next)
+  (let ([ht (make-hash)])
+    (for ([start-commit (in-list start-commits)])
+      (let loop ([a start-commit])
+        (or (hash-ref ht a #f)
+            (let ([s (for/fold ([s (set a)]) ([p (in-list (hash-ref commit->next a null))])
+                       (set-union s (loop p)))])
+              (hash-set! ht a s)
+              s))))
+    ht))

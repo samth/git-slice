@@ -48,13 +48,49 @@
       [drop-oldest?
        (define-values (commits head-commit commit->parents commit->children)
          (extract-commits))
+       
+       (define cs (hash-ref commit->children oldest-now))
+       (define new-initials (make-hash))
+       (let loop ([cs cs])
+         (for ([c (in-list cs)])
+           (define ps (remove oldest-now (hash-ref commit->parents c)))
+           (if (null? ps)
+               (hash-set! new-initials c #t)
+               (loop ps))))
+       (define new-root
+         (cond
+          [((hash-count new-initials) . > . 1)
+           ;; Dropping `oldest-now` might would multiple initial
+           ;; commits, which is potentially confusing (to `git-slice`
+           ;; itself, for example). Add an empty commit to serve
+           ;; as the root.
+           (printf "\n# Adding commit to serve as new initial commit\n")
+           (-system* git-exe "checkout" "--orphan" "newroot")
+           (-system* git-exe "rm" "-rf" ".")
+           (-system* git-exe "commit" "--allow-empty" "-m" "create slice")
+           (define new-root
+             (car
+              (filter-input (lambda (l)
+                              (cond
+                               [(regexp-match #rx"^commit (.*)$" l)
+                                => (lambda (m) (cadr m))]
+                               [else #f]))
+                            git-exe
+                            "log")))
+           (-system* git-exe "checkout" "master")
+           (-system* git-exe "branch" "-D" "newroot")
+           new-root]
+          [else #f]))
        (with-output-to-file ".git/info/grafts"
          (lambda ()
-           (for ([c (in-list (hash-ref commit->children oldest-now))])
+           (for ([c (in-list cs)])
              (displayln (apply ~a c
                                #:separator " "
-                               (remove oldest-now
-                                       (hash-ref commit->parents c)))))))]
+                               (let ([ps (remove oldest-now
+                                                 (hash-ref commit->parents c))])
+                                 (if new-root
+                                     (cons new-root ps)
+                                     ps)))))))]
       [else
        (with-output-to-file ".git/info/grafts"
          (lambda ()
