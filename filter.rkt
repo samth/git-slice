@@ -9,7 +9,7 @@
   (printf "\n# git-slice: filtering relevant commits ...\n\n")
   (define start-time (current-milliseconds))
  
-  (define-values (oldest-relevant start-at-commit)
+  (define-values (oldest-relevant start-at-commit drop-oldest?)
     (apply values
            (call-with-input-file (build-path dest-dir "oldest.rktd")
              read)))

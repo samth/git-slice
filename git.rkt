@@ -3,7 +3,8 @@
 (provide git-exe
          filter-input
          -system*
-         -system*/print)
+         -system*/print
+         extract-commits)
 
 (define git-exe (find-executable-path "git"))
 
@@ -27,3 +28,25 @@
 
 (define (-system* cmd . args) (apply system* cmd (filter values args)))
 (define (-system*/print . args) (displayln (apply ~a (add-between (filter values args) " "))))
+
+
+(define (extract-commits)
+  (define commits
+    (filter-input
+     string-split
+     git-exe
+     "log"
+     "--pretty=%H %P"))
+  
+  (define head-commit (caar commits))
+  
+  (define commit->parents
+    (for/hash ([cs (in-list commits)])
+      (values (car cs) (cdr cs))))
+  
+  (define commit->children
+    (for*/fold ([ht (hash)]) ([(k v) (in-hash commit->parents)]
+                              [(c) (in-list v)])
+      (hash-update ht c (lambda (p) (cons k p)) null)))
+  
+  (values commits head-commit commit->parents commit->children))

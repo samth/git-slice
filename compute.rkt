@@ -13,23 +13,8 @@
   
   (define exists-flag (if dry-run? 'error 'truncate))
   
-  (define commits
-    (filter-input
-     string-split
-     git-exe
-     "log"
-     "--pretty=%H %P"))
-  
-  (define head-commit (caar commits))
-  
-  (define commit->parents
-    (for/hash ([cs (in-list commits)])
-      (values (car cs) (cdr cs))))
-  
-  (define commit->children
-    (for*/fold ([ht (hash)]) ([(k v) (in-hash commit->parents)]
-                              [(c) (in-list v)])
-      (hash-update ht c (lambda (p) (cons k p)) null)))
+  (define-values (commits head-commit commit->parents commit->children)
+    (extract-commits))
   
   ;; One particular path that we sync forks to:
   (define main-line-commits
@@ -207,6 +192,7 @@
     (find-newest-older-cut oldest-relevant-commit))
 
   (printf "relevant commits bounded by ~a\n" oldest-relevant)
+  (define drop-oldest? (not (hash-ref relevants oldest-relevant #f)))
   (hash-set! relevants oldest-relevant #t)
   
   (with-output-to-file (build-path dest-dir "relevants.rktd")
@@ -220,7 +206,8 @@
     (lambda ()
       (write (list oldest-relevant
                    (let ([parents (hash-ref commit->parents oldest-relevant)])
-                     (and (pair? parents) (car parents)))))))
+                     (and (pair? parents) (car parents)))
+                   drop-oldest?))))
   
   (define how-many-relevant? (hash-count relevants))
   (define how-many-filtered? (for/sum ([i (in-list commits)]

@@ -4,7 +4,7 @@
 
 (define (go dest-dir tmp-dir dry-run?)
   
-  (define-values (oldest-relevant start-at-commit)
+  (define-values (oldest-relevant start-at-commit drop-oldest?)
     (apply values
            (call-with-input-file (build-path dest-dir "oldest.rktd")
              read)))
@@ -37,14 +37,28 @@
        (error 'chop
               "could not find new commit for ~a"
               oldest-relevant))
+
+     (define oldest-now (car starts))
      
-     (if dry-run?
-         (printf "grafting from ~a\n" (car starts))
-         (with-output-to-file
-             ".git/info/grafts"
-           (lambda ()
-             (displayln (car starts)))))
-     
+     (cond
+      [dry-run?
+       (printf "grafting from ~a~a\n"
+               (if drop-oldest? "children of " "")
+               oldest-now)]
+      [drop-oldest?
+       (define-values (commits head-commit commit->parents commit->children)
+         (extract-commits))
+       (with-output-to-file ".git/info/grafts"
+         (lambda ()
+           (for ([c (in-list (hash-ref commit->children oldest-now))])
+             (displayln (apply ~a c
+                               #:separator " "
+                               (remove oldest-now
+                                       (hash-ref commit->parents c)))))))]
+      [else
+       (with-output-to-file ".git/info/grafts"
+         (lambda ()
+           (displayln oldest-now)))])
      
      ((if dry-run? -system*/print -system*)
       git-exe
