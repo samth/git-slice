@@ -5,14 +5,16 @@
 (define prune (path->string (collection-file-path "prune.rkt" "git-slice")))
 (define commit (path->string (collection-file-path "commit.rkt" "git-slice")))
 
-(define (go dest-dir tmp-dir dry-run? [counts #f])
+(define (go dest-dir tmp-dir dry-run? #:start-at [start-at #f] [counts #f])
   (printf "\n# git-slice: filtering relevant commits ...\n\n")
   (define start-time (current-milliseconds))
  
   (define-values (oldest-relevant start-at-commit drop-oldest?)
-    (apply values
-           (call-with-input-file (build-path dest-dir "oldest.rktd")
-             read)))
+    (if start-at
+        (values #f start-at #f)
+        (apply values
+               (call-with-input-file (build-path dest-dir "oldest.rktd")
+                 read))))
   (define -dest-dir (if (path? dest-dir) (path->string dest-dir) dest-dir))
 
   (define res
@@ -40,10 +42,14 @@
 (module+ main
   (define tmp-dir #f)
   (define dry-run? #f)
+  (define start-at #f)
+  (define count #f)
   
   (define-values (dest-dir)
     (command-line
     #:once-each
+    ["--start-at" sha "start filtering at sha" (set! start-at sha)]
+    ["--count" "count number of operations" (set! count #t)]
     ["-d" scratch-dir
           "use <scratch-dir> as temporary working directory for `git filter-branch'"
           (set! tmp-dir (path->complete-path scratch-dir))]
@@ -54,5 +60,5 @@
      (dest-dir)
      (path->complete-path dest-dir)))
   
-  (void (go dest-dir tmp-dir dry-run?)))
+  (void (go dest-dir tmp-dir dry-run? count #:start-at start-at)))
   
