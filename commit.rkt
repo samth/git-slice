@@ -26,30 +26,9 @@
 
   (define-values (in) (current-input-port))
 
-  (define-values (remove-dups)
-    (let-values ([(ht) (make-hash)])
-      (letrec-values
-          ([(loop)
-            (lambda (l)
-              (if (null? l)
-                  l
-                  (if (null? (cdr l))
-                      l
-                      (if (equal? (car l) "-p")
-                          (if (hash-ref ht (car (cdr l)) #f)
-                              (loop (cdr (cdr l)))
-                              (begin (hash-set! ht (car (cdr l)) #t)
-                                     (cons "-p" (cons (car (cdr l))
-                                                      (loop (cdr (cdr l)))))))
-                          (cons (car l) (loop (cdr l)))))))])
-        loop)))
-                            
-
 
   (define-values (tree-args)
-    (if (> (vector-length (current-command-line-arguments)) 4)
-        (remove-dups (cdr (vector->list (current-command-line-arguments))))
-        (cdr (vector->list (current-command-line-arguments)))))
+    (cdr (vector->list (current-command-line-arguments))))
 
   (define-values (p i o e) (apply subprocess
                                   (current-output-port)
