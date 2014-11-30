@@ -47,7 +47,12 @@
                      (loop p))))])))
     (let loop ([p p])
       (if (can-reach-root-without? p)
-          (loop (car (hash-ref commit->parents p)))
+          ;; Try ancestor, skipping ahead to an ancestor that at least
+          ;; has two children:
+          (let c-loop ([p (car (hash-ref commit->parents p))])
+            (if (= 1 (length (hash-ref commit->children p)))
+                (c-loop (car (hash-ref commit->parents p)))
+                (loop p)))
           p)))
 
   (define (advance-to-main/newer commit)
