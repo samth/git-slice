@@ -19,7 +19,9 @@ $ cd my-repo
 $ racket -l git-slice subdir
 ```
 
-This performs multiple steps, which can be split out as follows:
+This destructively updates `my-repo` to only include `subdir`.
+
+It performs multiple steps, which can be split out as follows:
 
 ```
 $ mkdir /path/to/tmp-data
