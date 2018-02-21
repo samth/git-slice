@@ -1,5 +1,5 @@
 (module commit '#%kernel
-  (#%require (for-syntax '#%kernel '#%utils))
+  (#%require (for-syntax '#%kernel (only '#%utils find-executable-path)))
 
   (define-values (dir) (vector-ref (current-command-line-arguments) 0))
 
