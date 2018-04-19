@@ -56,8 +56,12 @@
                                    0))])
     (unless (= 1 num-without-parents)
       (error 'git-slice
-             "expect 1 initial commit, found ~a commits without parents"
-             num-without-parents)))
+             (~a "expect 1 initial commit, found ~a commits without parents\n"
+                 "commits: ~a")
+             num-without-parents
+             (for/list ([(k v) commit->parents]
+                        #:when (null? v))
+               k))))
   
   (values commits head-commit commit->parents commit->children))
 
