@@ -1,5 +1,5 @@
 (module prune '#%kernel
-  (#%require (for-syntax '#%kernel '#%utils))
+  (#%require (for-syntax '#%kernel (only '#%utils find-executable-path)))
 
   (define-syntaxes (git-exe-stx)
     (lambda (stx)
